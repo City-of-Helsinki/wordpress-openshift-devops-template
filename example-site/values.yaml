@@ -1,0 +1,42 @@
+replicaCount: ${REPLICACOUNT}
+
+project: ${PROJECT}
+appEnv: ${APP_ENV}
+
+wp:
+  image:
+    pullPolicy: Always
+    tag: "latest"
+  s2iImage:
+    name: "registry.access.redhat.com/ubi8/php-74"
+    tag: "1-38.1634036299"
+  claimName: "wp-uploads"
+  dbUser: "${WORDPRESS_DB_USER}"
+  dbPassword: "${WORDPRESS_DB_PASSWORD}"
+  tempSecret: "${TEMP_SECRET}"
+  dbHost: "${WORDPRESS_DB_HOST}"
+  dbDatabase: "${WORDPRESS_DB_NAME}"
+  tablePrefix: "${WORDPRESS_TABLE_PREFIX}"
+  storageClassName: "${STORAGE_CLASS}"
+  storageSize: "${STORAGE_SIZE}"
+  domain: "${DOMAIN}"
+  enableLivenessProbe: ${ENABLE_LIVENESS_PROBE}
+  enableReadinessProbe: $ENABLE_READINESS_PROBE
+
+git:
+  uri: "${GIT_URI}"
+  branch: "${GIT_BRANCH}"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  enabled: ${ENABLE_RESOURCES}
+  limits:
+    cpu: ${CPU_LIMITS}
+  requests:
+    cpu: ${CPU_REQUESTS}
+
+nodeSelector: ${NODESELECTOR}
+revisionHistoryLimit: ${REVISIONHISTORYLIMIT}

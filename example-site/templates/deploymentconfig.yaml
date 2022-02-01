@@ -1,0 +1,93 @@
+# apiVersion: apps/v1
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    app: {{ .Chart.Name }}
+  strategy:
+    type: Rolling
+  triggers: []
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: {{ .Chart.Name }}-config-map-env
+        - secretRef:
+            name: {{ .Chart.Name }}-secret
+        image: container-registry.platta-net.hel.fi:443/{{ .Values.project }}/{{ .Chart.Name }}:{{ .Values.wp.image.tag }}
+        imagePullPolicy: {{ .Values.wp.image.pullPolicy }}
+{{- if .Values.wp.enableLivenessProbe }}
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            httpHeaders:
+            - name: X-Forwarded-Proto
+              value: https
+            path: /wp-admin/install.php
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 90
+{{- end }}
+        name: {{ .Chart.Name }}
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+{{- if .Values.wp.enableReadinessProbe }}
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            httpHeaders:
+            - name: X-Forwarded-Proto
+              value: https
+            path: /wp-admin/install.php
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 90
+{{- end }}
+{{- if .Values.resources.enabled }}
+        resources:
+          limits:
+            cpu: {{ .Values.resources.limits.cpu }}
+          requests:
+            cpu: {{ .Values.resources.requests.cpu }}
+{{- end }}
+        volumeMounts:
+        - mountPath: /opt/app-root/src/wp-content/uploads
+          name: {{ .Values.wp.claimName }}
+        - mountPath: /opt/app-root/src/.htaccess
+          name: {{ .Chart.Name }}-config-map-htaccess
+          subPath: .htaccess
+        - mountPath: /opt/app-root/src/wp-config.php
+          name: {{ .Chart.Name }}-config-map-wp-config
+          subPath: wp-config.php
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: {{ .Values.wp.claimName }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.wp.claimName }}
+      - name: {{ .Chart.Name }}-config-map-htaccess
+        configMap:
+          name: {{ .Chart.Name }}-config-map-htaccess
+      - name: {{ .Chart.Name }}-config-map-wp-config
+        configMap:
+          name: {{ .Chart.Name }}-config-map-wp-config
+      nodeSelector:
+        env: {{ .Values.nodeSelector }}
+      imagePullSecrets:
+      - name: quay-secret

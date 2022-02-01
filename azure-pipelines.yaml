@@ -1,0 +1,66 @@
+resources:
+  repositories:
+  # Azure Repos
+  - repository: pipelines
+    type: git
+    name: <example-site>-pipelines
+
+trigger:
+  branches:
+    include:
+      - main
+
+
+# Variables specified at the pipeline level
+variables:
+  location: westeurope
+
+stages:
+#--------------------------- Development environment ------------------------------
+- stage: Development
+  displayName: Development environment
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/heads/development'))
+  variables:
+    - group: development
+    - group: development-kv
+  jobs:
+  # Run Helm
+  - template: azure-pipelines-wordpress.yml
+    parameters:
+      app: <example-site>
+      serviceConnection: <example-site>-dev
+      environment: development
+      project: hki-kanslia-<example-site>-dev
+
+#--------------------------- Testing environment ------------------------------
+- stage: Testing
+  displayName: Testing environment
+  condition: and(always(), startsWith(variables['Build.SourceBranch'], 'refs/heads/main'))
+  variables:
+    - group: testing
+    - group: testing-kv
+  jobs:
+  # Run Helm
+  - template: azure-pipelines-wordpress.yml
+    parameters:
+      app: <example-site>
+      serviceConnection: <example-site>-test
+      environment: testing
+      project: hki-kanslia-<example-site>-test
+
+#--------------------------- Production environment ------------------------------
+- stage: Production
+  displayName: Production environment
+  condition: and(always(), startsWith(variables['Build.SourceBranch'], 'refs/heads/main'))
+  pool: Production
+  variables:
+    - group: production
+    - group: production-kv
+  jobs:
+  # Run Helm
+  - template: azure-pipelines-wordpress.yml
+    parameters:
+      app: <example-site>
+      serviceConnection: <example-site>-prod
+      environment: production
+      project: hki-kanslia-<example-site>-prod
